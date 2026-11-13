@@ -3942,7 +3942,7 @@ function renderPrint(){
         + scard('<h2 class="s-h2">Support sheets</h2><div class="s-buttons">' + Object.keys(DOCS).filter(function(id){ return /^l\d/.test(id); }).map(function(id){ return sbtn('openDoc(\'' + id + '\')', '📑 L' + DOCS[id].lessons[0] + ' · ' + esc(strip(DOCS[id].short || DOCS[id].title))); }).join('') + '</div>')
         + scard('<h2 class="s-h2">Whole unit</h2>'
             + '<div class="s-buttons">' + [sbtn('openAllWorksheets()', '📄 All worksheets'), sbtn('openAllWorksheets(\'key\')', '🔑 All worksheets with answers'), sbtn('openAllCards()', '✂️ All card sets'),
-                sbtn('openAllAnswerKeys()', '🔑 All answer keys'), sbtn('openUnitPlan()', '📕 Full unit plan'), sbtn('openGlossary()', '🔤 Key words list'), sbtn('openWordWall()', '🧱 Word wall cards'), sbtn('openCredits()', '🖼️ Image credits')].join('') + '</div>'
+                sbtn('openAllAnswerKeys()', '🔑 All answer keys'), sbtn('openUnitPlan()', '📕 Full unit plan'), sbtn('openGlossary()', '🔤 Key words list'), sbtn('openWordWall()', '🧱 Word wall cards'), sbtn('openCredits()', '🖼️ Image credits'), sbtn('openWorkbook()', '📕 Student workbook (no device)')].join('') + '</div>'
             + '<details class="s-more" style="margin-top:1rem"><summary>Where the facts and figures come from</summary><ul class="s-links">'
             + DB_ROWS.map(function(r){ return '<li><strong>' + esc(r.fig) + '</strong> — ' + esc(r.what) + ' ' + (r.u ? '<a href="' + esc(r.u) + '" target="_blank" rel="noopener noreferrer">' + esc(r.src) + ' ↗</a>' : esc(r.src)) + '</li>'; }).join('')
             + '</ul></details>');
@@ -4162,6 +4162,83 @@ function creditsHTML(){
         + '</tbody></table></div>';
 }
 function openCredits(){ openPrintable(creditsHTML(), 'Image credits — ' + SITE.unitBanner, siteFile('image-credits')); }
+
+/* ---------- student workbook (no device) ----------
+   One printable book: for each lesson, the notes, the worksheet, a fact file
+   in place of each online research task, and writing space in place of each
+   Google Doc. Built from the same data as the slides and worksheets.        */
+function workbookHTML(){
+    var WB = UNIT.workbook; if (!WB) return '';
+    var css = '<style>'
+      + '.wbcover{text-align:center;padding-top:28mm}.wbcover .k{font:700 10pt Consolas,monospace;letter-spacing:.2em;color:#8b6508;text-transform:uppercase}'
+      + '.wbcover h1{font-size:30pt;color:#002066;margin:6mm 0 2mm}.wbcover .t2{font-size:15pt;color:#334155;margin-bottom:10mm}'
+      + '.wbname{display:grid;grid-template-columns:auto 1fr;gap:5mm 4mm;max-width:130mm;margin:10mm auto;text-align:left;font-size:12pt}.wbname span.l{border-bottom:1px solid #333}'
+      + '.wbhow{width:100%;border-collapse:collapse;margin-top:6mm;text-align:left}.wbhow td{border:1px solid #cbd5e1;padding:2mm 3mm;font-size:10pt;vertical-align:top}.wbhow td.i{font-size:16pt;width:12mm;text-align:center}'
+      + '.wbcont{columns:2;column-gap:10mm;font-size:10.5pt;margin-top:4mm}.wbcont div{break-inside:avoid;padding:1.2mm 0;border-bottom:1px dotted #cbd5e1}'
+      + '.wbles{background:#002066;color:#fff;border-radius:3mm;padding:4mm 6mm;margin-bottom:4mm}.wbles .n{font:700 9pt Consolas,monospace;letter-spacing:.18em;color:#c5a059}.wbles h1{color:#fff;font-size:19pt;margin:1mm 0 0;border:none}'
+      + '.wbli{border:1.5px solid #c5a059;border-radius:2mm;padding:3mm 4mm;margin-bottom:4mm;font-size:10.5pt}.wbli ul{margin:1.5mm 0 0 0;padding:0;list-style:none}.wbli li{padding:.6mm 0}.wbli li:before{content:"\\2610  ";font-size:12pt}'
+      + '.wbsec{display:block;margin:6mm 0 2mm;padding-bottom:1.2mm;border-bottom:2px solid #002066;font-weight:700;font-size:12.5pt;color:#002066;break-after:avoid}'
+      + '.wbsec .ic{font-size:14pt;margin-right:2mm}.wbsec .tag{float:right;margin-top:1mm;font:700 8pt Consolas,monospace;letter-spacing:.1em;color:#fff;background:#4338ca;border-radius:1mm;padding:.6mm 2mm}'
+      + '.wbnote{background:#f0fdf4;border:1px solid #86efac;border-radius:2mm;padding:2.5mm 4mm;font-size:10.5pt}.wbnote ol{margin:0;padding-left:5mm}.wbnote li{padding:1mm 0}'
+      + '.wbfact{background:#fffbeb;border:1.5px solid #e9b949;border-radius:2mm;padding:3mm 4mm}.wbfact .wbff th{width:28%;background:#fef3c7}.wbfact .wbff td,.wbfact .wbff th{font-size:9.6pt;vertical-align:top}.wbff tr{break-inside:avoid}.wbkeep{break-inside:avoid}'
+      + '.wbinst{font-size:10pt;color:#4338ca;font-weight:600;margin:1mm 0 2mm}.wbkw{font-size:9.6pt;margin-bottom:3mm}.wbkw b{color:#002066}'
+      + '.wbexit{border:2px dashed #002066;border-radius:2mm;padding:3mm 4mm;margin-top:6mm;break-inside:avoid}.wbexit .h{font-weight:700;color:#002066}'
+      + '</style>';
+    function sec(ic, t, tag){ return '<div class="wbsec"><span class="ic">' + ic + '</span>' + t + (tag ? '<span class="tag">' + tag + '</span>' : '') + '</div>'; }
+    function blocks(bs){ return bs.map(wsBlockHTML).join(''); }
+    var lessons = LESSONS.map(function(l){ return l.n; }).filter(function(n){ return WB.lessons[n]; });
+    var out = css;
+    // cover
+    out += '<div class="wsheet wbcover"><div class="k">' + esc(siteKicker()) + '</div><h1>' + esc(SITE.unitBanner) + '</h1><div class="t2">' + esc(SITE.unitTitle) + ' — ' + esc(WB.title) + '</div>'
+        + '<div class="wbname"><span>Name:</span><span class="l"></span><span>Class:</span><span class="l"></span><span>Teacher:</span><span class="l"></span></div>'
+        + '<p class="wintro" style="text-align:left">' + esc(WB.sub) + '</p>'
+        + '<table class="wbhow"><tbody>' + WB.how.map(function(h){ return '<tr><td class="i">' + h[0] + '</td><td><strong>' + esc(h[1]) + '</strong> — ' + esc(h[2]) + '</td></tr>'; }).join('') + '</tbody></table></div>';
+    // contents
+    out += PB + '<div class="wsheet"><div class="whead"><h1>Contents</h1></div><div class="wbcont">'
+        + lessons.map(function(n){ return '<div><strong>Lesson ' + n + '</strong> — ' + esc(lessonTitle(n)) + '<span class="wbpg" data-l="' + n + '"></span></div>'; }).join('')
+        + '<div><strong>Homework</strong><span class="wbpg" data-l="hw"></span></div><div><strong>Word list</strong><span class="wbpg" data-l="gl"></span></div></div></div>';
+    lessons.forEach(function(n){
+        var cfg = WB.lessons[n], mt = LESSON_META[n] || {}, ws = WORKSHEETS[n], bw = BOOKWORK[n];
+        var kw = Object.keys(UNIT.glossary || {}).filter(function(k){ return (UNIT.glossary[k].l || []).indexOf(n) > -1; });
+        var h = PB + '<div class="wsheet" data-wbl="' + n + '"><div class="wbles"><div class="n">LESSON ' + n + ' · ' + esc((STRAND_LABEL[lessonOf(n).strand] || '').toUpperCase()) + '</div><h1>' + esc(lessonTitle(n)) + '</h1></div>'
+            + '<div class="wbli"><strong>We are learning:</strong> ' + esc((mt.intent || '').replace(/^We are learning to /, 'to ')) + (mt.criteria ? '<ul>' + mt.criteria.map(function(c){ return '<li>' + esc(c) + '</li>'; }).join('') + '</ul>' : '') + '</div>'
+            + (kw.length ? '<div class="wbkw">' + kw.map(function(k){ return '<b>' + esc(k) + '</b> — ' + esc(UNIT.glossary[k].def); }).join('<br>') + '</div>' : '');
+        cfg.parts.forEach(function(p){
+            if (p.t === 'notes' && bw) h += sec('📝', 'Notes', 'BOOK') + '<div class="wbnote"><ol>' + bw.copy.map(function(c){ return '<li>' + esc(c) + '</li>'; }).join('') + '</ol></div>';
+            else if (p.t === 'fact') { var fh = sec('📚', 'Fact file: ' + esc(p.title), 'INSTEAD OF THE DEVICE') + (p.intro ? '<p class="wbinst">' + esc(p.intro) + '</p>' : ''); h += p.body.length < 3200 ? '<div class="wbkeep">' + fh + '<div class="wbfact">' + p.body + '</div></div>' : fh + '<div class="wbfact">' + p.body + '</div>'; }
+            else if (p.t === 'task') h += '<div class="wbkeep">' + sec('✏️', esc(p.title)) + (p.intro ? '<p class="wbinst">' + esc(p.intro) + '</p>' : '') + blocks(p.blocks) + '</div>';
+            else if (p.t === 'doc') { var d = DOCS[p.id]; h += sec('📑', esc(strip(d.title))) + (d.intro ? '<p class="wintro">' + d.intro + '</p>' : '') + blocks(d.blocks); }
+            else if (p.t === 'ws' && ws) {
+                var bs = ws.blocks.map(function(b, i){ return [b, i]; }).filter(function(x){ return x[1] >= (p.from || 0) && x[1] < (p.to == null ? 1e9 : p.to) && (p.skip || []).indexOf(x[1]) < 0 && !(p.noRubric && x[0].t === 'rubric'); }).map(function(x){
+                    var b = JSON.parse(JSON.stringify(x[0]));
+                    if (p.mcq && b.t === 'mcq') b.opts = p.mcq;
+                    if (p.src && b.q === 4 && b.t === 'lines') b.label = p.src;
+                    if (p.lines && b.t === 'lines' && b.q) b.n = Math.max(b.n || 0, p.lines);
+                    return b;
+                });
+                var first = !p.from;
+                var bh = bs.map(wsBlockHTML), small = bh.length && bh[0].length < 2500 && !/class="wsheet|<svg/.test(bh[0]);
+                var head = sec(ws.digital ? '✏️' : '📄', (first ? 'Worksheet: ' : 'Worksheet, continued: ') + ws.title, ws.digital ? 'INSTEAD OF THE GOOGLE DOC' : '')
+                    + (p.instead ? '<p class="wbinst">' + esc(p.instead) + '</p>' : '') + (first && ws.intro && !ws.digital ? '<p class="wintro">' + ws.intro + '</p>' : '');
+                h += small ? '<div class="wbkeep">' + head + bh[0] + '</div>' + bh.slice(1).join('') : head + bh.join('');
+            }
+            else if (p.t === 'exit' && !p.none && mt.exit) h += '<div class="wbexit"><div class="h">🎟️ Exit ticket</div><div class="wlab" style="margin-top:1mm">' + esc(mt.exit) + '</div><div class="wl"></div><div class="wl"></div><div class="wl"></div></div>';
+        });
+        out += h + '</div>';
+    });
+    // homework
+    out += PB + '<div class="wsheet" data-wbl="hw"><div class="wbles"><div class="n">HOMEWORK</div><h1>Homework, Weeks 1–4</h1></div>'
+        + (UNIT.homework || []).filter(function(w){ return w.tasks && w.tasks.length; }).map(function(w){ return '<p class="wt"><strong>Week ' + w.wk + ' (due Lesson ' + w.due + ') — ' + esc(w.title) + ':</strong> ' + w.tasks.map(esc).join(' ') + '</p>'; }).join('') + '</div>';
+    (WB.homework || []).forEach(function(id){ var d = DOCS[id]; out += PB + '<div class="wsheet">' + sec('🏠', esc(strip(d.title))) + (d.intro ? '<p class="wintro">' + d.intro + '</p>' : '') + blocks(d.blocks) + '</div>'; });
+    out += PB + '<div class="wsheet">' + sec('🏠', 'Week 4 homework: from the Silk Road to the sea') + '<p class="wintro">Write a short paragraph (4–5 sentences) summarising how the world changed from using the Silk Road to using sea routes. Due Lesson 13.</p>'
+        + wsBlockHTML({ t: 'lines', label: 'My paragraph', n: 12 }) + '</div>';
+    // word list
+    var G = UNIT.glossary || {};
+    out += PB + '<div class="wsheet" data-wbl="gl"><div class="wbles"><div class="n">WORD LIST</div><h1>Key words for the unit</h1></div><table class="wtab ptab"><tbody>'
+        + Object.keys(G).map(function(k){ return '<tr><th class="wrow" style="width:26%">' + esc(k) + '</th><td>' + esc(G[k].def) + '</td></tr>'; }).join('') + '</tbody></table></div>';
+    return out;
+}
+function openWorkbook(){ openPrintable(workbookHTML(), 'Student workbook (no device) — ' + SITE.unitBanner, siteFile('student-workbook')); }
 
 </script>
 <!-- ===================== THE UNIT — everything below is content ===================== -->
@@ -5308,6 +5385,387 @@ var UNIT = {
     }
    ]
   }
+ },
+ "workbook": {
+  "title": "Student workbook",
+  "sub": "For students working without a device. Everything you need for each lesson is here: your notes, your worksheets, and a paper version of every task the class does on devices.",
+  "how": [
+   [
+    "📝",
+    "Notes",
+    "The notes the class copies from the board. Read them and highlight the key words."
+   ],
+   [
+    "📄",
+    "Worksheet",
+    "The same worksheet the class does. Fill it in here."
+   ],
+   [
+    "📚",
+    "Fact file",
+    "When the class goes online to research, you read the fact file instead. It has what you need."
+   ],
+   [
+    "✏️",
+    "Instead of the device",
+    "When the class types in a Google Doc, you write on these pages."
+   ],
+   [
+    "🎟️",
+    "Exit ticket",
+    "Answer it at the end of the lesson and show your teacher."
+   ]
+  ],
+  "lessons": {
+   "1": {
+    "parts": [
+     {
+      "t": "notes"
+     },
+     {
+      "t": "fact",
+      "title": "Silk Road cities",
+      "intro": "Use this instead of the interactive map. Choose three cities for your city log.",
+      "body": "<table class=\"wtab ptab wbff\"><tbody><tr><th class=\"wrow\">Chang’an (Xi’an), China</th><td>Capital of the Han Dynasty and the eastern start of the Silk Road. Silk, paper and porcelain set off from here.</td></tr><tr><th class=\"wrow\">Dunhuang, China</th><td>An oasis town at the edge of the Gobi and Taklamakan deserts. Travellers rested here before crossing the desert. Its Mogao Caves are full of Buddhist paintings.</td></tr><tr><th class=\"wrow\">Kashgar, China</th><td>An oasis city at the western edge of the Taklamakan Desert, where the northern and southern routes met before the Pamir Mountains. Famous for its huge market.</td></tr><tr><th class=\"wrow\">Samarkand, Uzbekistan</th><td>Home of the Sogdians, expert Silk Road merchants. Paper-making reached Samarkand from China in the 700s.</td></tr><tr><th class=\"wrow\">Merv, Turkmenistan</th><td>A great oasis city of the Persian empires. In the 1100s it was one of the biggest cities in the world.</td></tr><tr><th class=\"wrow\">Baghdad, Iraq</th><td>Built in 762 CE by the Abbasid Caliphate. Its scholars translated books from Greek, Persian and Indian into Arabic.</td></tr><tr><th class=\"wrow\">Constantinople (Istanbul), Turkey</th><td>Capital of the Byzantine Empire, standing between Europe and Asia. Captured by the Ottomans in 1453.</td></tr><tr><th class=\"wrow\">Venice, Italy</th><td>The Republic of Venice, built on islands in a lagoon. Its merchants bought spices and silk in the east and sold them across Europe. Marco Polo’s home city.</td></tr><tr><th class=\"wrow\">Alexandria, Egypt</th><td>A port founded by Alexander the Great in 331 BCE. Spices from India arrived here by the Red Sea.</td></tr></tbody></table>"
+     },
+     {
+      "t": "ws"
+     },
+     {
+      "t": "exit"
+     }
+    ]
+   },
+   "2": {
+    "parts": [
+     {
+      "t": "notes"
+     },
+     {
+      "t": "ws"
+     },
+     {
+      "t": "exit"
+     }
+    ]
+   },
+   "3": {
+    "parts": [
+     {
+      "t": "task",
+      "title": "Sort these five exchanges",
+      "blocks": [
+       {
+        "t": "table",
+        "label": "Write goods, technology or idea for each one. The class does this together.",
+        "head": [
+         "Exchange",
+         "Goods, technology or idea?"
+        ],
+        "w": [
+         40,
+         60
+        ],
+        "body": [
+         [
+          "Silk",
+          ""
+         ],
+         [
+          "Paper",
+          ""
+         ],
+         [
+          "Buddhism",
+          ""
+         ],
+         [
+          "Pepper",
+          ""
+         ],
+         [
+          "Gunpowder",
+          ""
+         ]
+        ]
+       }
+      ]
+     },
+     {
+      "t": "fact",
+      "title": "Four Chinese inventions",
+      "intro": "Use this instead of the links in the Google Doc. Choose one invention, then answer the questions after the fact file.",
+      "body": "<table class=\"wtab ptab wbff\"><tbody><tr><th class=\"wrow\">Paper</th><td><strong>When and where:</strong> China, about 2,000 years ago (by 105 CE). First used for writing and keeping records.<br><strong>How it travelled:</strong> paper-makers reached Samarkand in the 700s; paper spread to Baghdad, then into Europe through Sicily and Spain.<br><strong>What it changed:</strong> writing became cheaper than on parchment (animal skin), so more books and records could be made.</td></tr><tr><th class=\"wrow\">Printing</th><td><strong>When and where:</strong> China. Woodblock printing by the 700s; the Diamond Sutra was printed in 868 CE. Movable type was invented in the 1040s.<br><strong>How it travelled:</strong> the idea moved west through the Islamic world. Gutenberg built his printing press in Germany about 1450.<br><strong>What it changed:</strong> books became cheap and quick to make, more people learned to read, and news and ideas spread fast.</td></tr><tr><th class=\"wrow\">The compass</th><td><strong>When and where:</strong> China, first used for fortune-telling and planning buildings; used by sailors by about 1100.<br><strong>How it travelled:</strong> with Arab and Persian sailors on the Indian Ocean; it reached Europe by about 1190.<br><strong>What it changed:</strong> sailors could find north in cloud and out of sight of land — ocean voyages became possible.</td></tr><tr><th class=\"wrow\">Gunpowder</th><td><strong>When and where:</strong> China, by the 800s or 900s. First used in fireworks, then in weapons.<br><strong>How it travelled:</strong> through the Mongol Empire and the Islamic world; it reached Europe by the 1300s.<br><strong>What it changed:</strong> cannons and guns changed war; strong castle walls were no longer safe.</td></tr></tbody></table>"
+     },
+     {
+      "t": "ws",
+      "skip": [
+       0
+      ],
+      "instead": "Instead of the Google Doc: answer here, using the fact file."
+     },
+     {
+      "t": "exit",
+      "none": true
+     }
+    ]
+   },
+   "4": {
+    "parts": [
+     {
+      "t": "notes"
+     },
+     {
+      "t": "ws",
+      "to": 2
+     },
+     {
+      "t": "fact",
+      "title": "Why medieval Europeans wanted spices",
+      "intro": "Use this instead of the device for Q3.",
+      "body": "<table class=\"wtab ptab wbff\"><tbody><tr><th class=\"wrow\">Flavour</th><td>Rich people loved strong, exciting flavours. Cooks used pepper, cinnamon, cloves and ginger in sauces, cakes and drinks.</td></tr><tr><th class=\"wrow\">Medicine</th><td>Doctors believed spices balanced the body and cured illness. Spices were sold by apothecaries (chemists).</td></tr><tr><th class=\"wrow\">Showing off wealth</th><td>Spices were so expensive that serving them showed guests how rich and important you were.</td></tr><tr><th class=\"wrow\">Perfume and incense</th><td>Spices and resins were burned as incense in churches and used in perfumes.</td></tr><tr><th class=\"wrow\">Preserving food</th><td>Meat and fish were kept with salt. Spices were added for flavour and were thought to help food keep.</td></tr><tr><th class=\"wrow\">Rare and exotic</th><td>Spices came from far-off lands most Europeans had never seen, which made them seem special.</td></tr><tr><th class=\"wrow\">A myth</th><td>Spices were <em>not</em> mainly used to hide rotten meat. People rich enough to buy pepper could afford fresh meat.</td></tr></tbody></table>"
+     },
+     {
+      "t": "ws",
+      "from": 2
+     },
+     {
+      "t": "exit"
+     }
+    ]
+   },
+   "5": {
+    "parts": [
+     {
+      "t": "notes"
+     },
+     {
+      "t": "ws"
+     },
+     {
+      "t": "exit"
+     }
+    ]
+   },
+   "6": {
+    "parts": [
+     {
+      "t": "ws",
+      "to": 2,
+      "instead": "Read Source A with the class and answer Q1 here."
+     },
+     {
+      "t": "fact",
+      "title": "What did European rulers do next?",
+      "intro": "Use this instead of the device for Q2 and Q3.",
+      "body": "<table class=\"wtab ptab wbff\"><tbody><tr><th class=\"wrow\">Portugal</th><td>Prince Henry “the Navigator” had already been sending ships down the coast of Africa. After 1453 Portugal kept pushing south: Bartolomeu Dias rounded the Cape of Good Hope in 1488, and Vasco da Gama reached India by sea in 1498.</td></tr><tr><th class=\"wrow\">Spain</th><td>In 1492 Queen Isabella and King Ferdinand paid for Christopher Columbus to sail west, hoping to reach Asia.</td></tr><tr><th class=\"wrow\">Venice</th><td>In 1454 Venice signed a trade treaty with the Ottomans so it could keep trading.</td></tr><tr><th class=\"wrow\">The Pope</th><td>In 1494 the Treaty of Tordesillas divided the new lands outside Europe between Spain and Portugal.</td></tr></tbody></table>"
+     },
+     {
+      "t": "ws",
+      "from": 2
+     },
+     {
+      "t": "notes"
+     },
+     {
+      "t": "task",
+      "title": "Your cause-and-consequence chain",
+      "blocks": [
+       {
+        "t": "steps",
+        "label": "Draw your chain here instead of in your book. Start with a cause; end with Europeans sailing to find a sea route. Read each arrow as “so…”.",
+        "n": 5,
+        "h": "14mm"
+       }
+      ]
+     },
+     {
+      "t": "exit"
+     }
+    ]
+   },
+   "7": {
+    "parts": [
+     {
+      "t": "fact",
+      "title": "Ten exploration events",
+      "intro": "Use this instead of the device. Choose five events for your timeline — at least one English, one French and one Dutch.",
+      "body": "<table class=\"wtab ptab wbff\"><tbody><tr><th class=\"wrow\">1488</th><td>Bartolomeu Dias (Portugal) sails around the Cape of Good Hope, the southern tip of Africa.</td></tr><tr><th class=\"wrow\">1492</th><td>Christopher Columbus (sailing for Spain) reaches the Bahamas. He thinks he is in Asia.</td></tr><tr><th class=\"wrow\">1497</th><td>John Cabot (sailing for England) reaches North America.</td></tr><tr><th class=\"wrow\">1498</th><td>Vasco da Gama (Portugal) reaches Calicut, India, by sailing around Africa.</td></tr><tr><th class=\"wrow\">1500</th><td>Pedro Álvares Cabral (Portugal) reaches Brazil.</td></tr><tr><th class=\"wrow\">1519–1522</th><td>Ferdinand Magellan’s expedition, finished by Juan Sebastián Elcano (Spain), sails all the way around the world.</td></tr><tr><th class=\"wrow\">1534</th><td>Jacques Cartier (France) explores the St Lawrence River in what is now Canada.</td></tr><tr><th class=\"wrow\">1600</th><td>The English East India Company is founded to trade in Asia.</td></tr><tr><th class=\"wrow\">1602</th><td>The Dutch East India Company (VOC) is founded to trade spices in Asia.</td></tr><tr><th class=\"wrow\">1607 · 1608</th><td>England sets up Jamestown in North America (1607); France founds Quebec (1608).</td></tr></tbody></table>"
+     },
+     {
+      "t": "ws",
+      "to": 3,
+      "instead": "Instead of the Google Doc: write your timeline here."
+     },
+     {
+      "t": "exit",
+      "none": true,
+      "q": 4
+     }
+    ]
+   },
+   "8": {
+    "parts": [
+     {
+      "t": "notes"
+     },
+     {
+      "t": "ws",
+      "to": 2
+     },
+     {
+      "t": "fact",
+      "title": "The compass: from China to Europe",
+      "intro": "Use this instead of the device for Q2 and Q3.",
+      "body": "<table class=\"wtab ptab wbff\"><tbody><tr><th class=\"wrow\">China</th><td>Chinese people knew that a lodestone (a magnetic rock) points north. At first it was used for fortune-telling and for planning buildings. By about 1100, in the Song Dynasty, sailors used a magnetised needle to find their way. A writer called Zhu Yu described it in 1119.</td></tr><tr><th class=\"wrow\">On the way</th><td>Arab and Persian sailors traded across the Indian Ocean with China and India. The idea of the compass probably travelled west with them and along the trade routes.</td></tr><tr><th class=\"wrow\">Europe</th><td>An English writer, Alexander Neckam, describes a compass in about 1190. By the 1400s, Portuguese and Spanish sailors used it on their voyages.</td></tr></tbody></table>"
+     },
+     {
+      "t": "ws",
+      "from": 2
+     },
+     {
+      "t": "exit"
+     }
+    ]
+   },
+   "9": {
+    "parts": [
+     {
+      "t": "notes"
+     },
+     {
+      "t": "ws"
+     },
+     {
+      "t": "task",
+      "title": "Your T-chart",
+      "blocks": [
+       {
+        "t": "tchart",
+        "label": "Fill in your T-chart here instead of in your book. Use evidence from Sources A and B.",
+        "left": "European explorer",
+        "right": "Local inhabitant",
+        "rows": 3,
+        "h": "30mm",
+        "hint": "Row 1: what did they want? · Row 2: what did they value? · Row 3: was it an opportunity, a conflict or a challenge for them?"
+       }
+      ]
+     },
+     {
+      "t": "exit"
+     }
+    ]
+   },
+   "10": {
+    "parts": [
+     {
+      "t": "fact",
+      "title": "Three colonies",
+      "intro": "Use this instead of the device. Choose one colony, then fill in the organiser.",
+      "body": "<div class=\"wsec\">New Spain (Mexico) — Spain</div><table class=\"wtab ptab wbff\"><tbody><tr><th class=\"wrow\">When</th><td>Hernán Cortés landed in 1519. The Aztec capital, Tenochtitlan, fell in 1521.</td></tr><tr><th class=\"wrow\">Who already lived there</th><td>The Aztec (Mexica) and many other Indigenous peoples.</td></tr><tr><th class=\"wrow\">Wealth wanted</th><td>Gold at first, then silver from huge mines, and land.</td></tr><tr><th class=\"wrow\">How they took control</th><td>War, with help from Indigenous peoples who wanted to be free of the Aztecs. Smallpox, brought by Europeans, killed huge numbers of people.</td></tr><tr><th class=\"wrow\">Impact</th><td>Millions died from war and disease. Survivors were forced to work in mines and on farms; temples were destroyed and Christianity was forced on people.</td></tr></tbody></table><div class=\"wsec\">Brazil — Portugal</div><table class=\"wtab ptab wbff\"><tbody><tr><th class=\"wrow\">When</th><td>Pedro Álvares Cabral reached Brazil in 1500.</td></tr><tr><th class=\"wrow\">Who already lived there</th><td>The Tupi and many other Indigenous peoples.</td></tr><tr><th class=\"wrow\">Wealth wanted</th><td>Brazilwood (for red dye), then sugar.</td></tr><tr><th class=\"wrow\">How they took control</th><td>Trading posts, then settlers who took land for sugar plantations.</td></tr><tr><th class=\"wrow\">Impact</th><td>Indigenous people lost their land, were enslaved or died from disease. Millions of enslaved Africans were later brought to work on the plantations.</td></tr></tbody></table><div class=\"wsec\">Batavia (Java, Indonesia) — the Netherlands</div><table class=\"wtab ptab wbff\"><tbody><tr><th class=\"wrow\">When</th><td>The Dutch East India Company (VOC) captured Jayakarta in 1619 and renamed it Batavia (today Jakarta).</td></tr><tr><th class=\"wrow\">Who already lived there</th><td>Javanese people, and traders from China, India and Arabia.</td></tr><tr><th class=\"wrow\">Wealth wanted</th><td>Spices — nutmeg, cloves, pepper — and control of the spice trade.</td></tr><tr><th class=\"wrow\">How they took control</th><td>A fort, warships and war. In 1621 the VOC conquered the Banda Islands to control nutmeg.</td></tr><tr><th class=\"wrow\">Impact</th><td>Local rulers lost power; on the Banda Islands most of the people were killed, enslaved or driven out.</td></tr></tbody></table>"
+     },
+     {
+      "t": "ws",
+      "from": 1,
+      "instead": "Instead of the Google Doc: write here, using the fact file.",
+      "mcq": [
+       "New Spain (Mexico) — Spain",
+       "Brazil — Portugal",
+       "Batavia (Java) — the Netherlands"
+      ],
+      "src": "Where did you find your information? Write “Student workbook fact file” and anything else you used."
+     },
+     {
+      "t": "exit",
+      "none": true,
+      "q": 6
+     }
+    ]
+   },
+   "11": {
+    "parts": [
+     {
+      "t": "notes"
+     },
+     {
+      "t": "ws"
+     },
+     {
+      "t": "task",
+      "title": "Your reflection",
+      "intro": "The class types this on devices. Write yours here.",
+      "blocks": [
+       {
+        "t": "lines",
+        "label": "How did the demand for sugar and cotton in Europe result in human suffering? Use at least one source as evidence. Write 6–8 sentences.",
+        "n": 12
+       }
+      ]
+     },
+     {
+      "t": "exit"
+     }
+    ]
+   },
+   "12": {
+    "parts": [
+     {
+      "t": "fact",
+      "title": "Silk & Sail on paper",
+      "intro": "The class plays the Silk & Sail game on devices. You can play with a partner — or play this paper version. Read each scene, circle your choice, then read what happens.",
+      "body": "<table class=\"wtab ptab wbff\"><tbody><tr><th class=\"wrow\">Scene 1 · Chang’an, 130 BCE</th><td>You lead a caravan of 20 camels loaded with silk. Do you take the <strong>northern route</strong> around the Taklamakan (A) or the <strong>southern route</strong> (B)?<br><em>What happens:</em> both routes skirt the desert from oasis to oasis. A is cooler but has bandits in the hills; B is hotter, with long gaps between oases. Either way you lose two camels to the heat and the cold.</td></tr><tr><th class=\"wrow\">Scene 2 · Baghdad, 800s CE</th><td>The city’s officials demand a tax on your goods. Do you <strong>pay</strong> (A) or <strong>try to sneak past</strong> (B)?<br><em>What happens:</em> A — you lose some profit but trade safely in the biggest market in the world. B — you are caught; your goods are seized. Empires in the middle grew rich on these taxes.</td></tr><tr><th class=\"wrow\">Scene 3 · Venice, 1453</th><td>Constantinople has fallen to the Ottomans and pepper costs more than ever. Do you <strong>keep trading through Alexandria</strong> (A) or <strong>sell your ships</strong> (B)?<br><em>What happens:</em> A — Venice keeps trading for many years, paying higher taxes. B — you are out of business. Far away in Lisbon, the Portuguese are planning a way around you…</td></tr><tr><th class=\"wrow\">Scene 4 · Lisbon, 1497</th><td>You are fitting out a ship for India. Do you take a <strong>compass and an astrolabe</strong> (A) or <strong>trust the coastline</strong> (B)?<br><em>What happens:</em> A — you can sail far out into the Atlantic and swing around Africa, as da Gama did. B — you creep along the coast and run out of food. Both tools came to Europe through contact with other cultures.</td></tr><tr><th class=\"wrow\">Scene 5 · Calicut, India, 1498</th><td>You meet the ruler of Calicut. Do you offer <strong>cloth, hats and honey</strong> (A) or <strong>gold</strong> (B)?<br><em>What happens:</em> A — his officials laugh at your gifts (this really happened to da Gama). B — you are taken seriously, but you have little gold left. For Calicut’s merchants, you are a rival; for Portugal, India is a huge opportunity.</td></tr></tbody></table>"
+     },
+     {
+      "t": "ws",
+      "instead": "Instead of the game log Google Doc: write here. If you played the paper version, the “parts of the game” are the five scenes."
+     },
+     {
+      "t": "exit",
+      "none": true,
+      "q": 4
+     }
+    ]
+   },
+   "13": {
+    "parts": [
+     {
+      "t": "doc",
+      "id": "narr-brief"
+     },
+     {
+      "t": "doc",
+      "id": "narr-sources"
+     },
+     {
+      "t": "ws"
+     }
+    ]
+   },
+   "14": {
+    "parts": [
+     {
+      "t": "ws",
+      "noRubric": true,
+      "lines": 9,
+      "instead": "Write your narrative here instead of in the Google Doc. If you chose a digital presentation, this is your script — your teacher will help you present it."
+     }
+    ]
+   },
+   "15": {
+    "parts": [
+     {
+      "t": "ws",
+      "noRubric": true,
+      "instead": "Do your final check here instead of in the Google Doc. Hand in this workbook with your narrative."
+     }
+    ]
+   }
+  },
+  "homework": [
+   "hw-vocab",
+   "hw-ottoman",
+   "hw-flashcards"
+  ]
  },
  "lessons": [
   {
