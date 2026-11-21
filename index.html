@@ -1326,6 +1326,9 @@ iframe.t-paper { width:100%; height:900px; border:1px solid #cbd5e1; border-radi
 <style>
 .s-photo-grid{display:grid;grid-template-columns:1.15fr 1fr;gap:clamp(1rem,2.6vw,2.6rem);align-items:center}
 .s-photo-grid.solo{grid-template-columns:1fr}
+.pd-prof{background:#dbeafe!important;color:#002066!important}
+.pd-prof-row th,.pd-prof-row td{background:#eff6ff}
+html.dark .pd-prof,html.dark .pd-prof-row th,html.dark .pd-prof-row td{background:#1e3a5f!important;color:#e2e8f0!important}
 .s-wsq{background:#fff;border:1px solid #cbd5e1;border-radius:.6rem;padding:clamp(.4rem,1vw,1rem);box-shadow:0 10px 30px -14px rgba(0,0,0,.35);text-align:center}
 .s-wsq img{max-width:100%;max-height:56vh;object-fit:contain;display:inline-block}
 .slide:has(.s-photo-grid),.slide-hero{padding-top:clamp(2.6rem,4.5vw,3.6rem)!important}
@@ -3499,7 +3502,7 @@ function markSheetHTML(){
         + '<div class="wname"><span>Student:</span><span class="wnl"></span><span>Format:</span><span class="wnl short"></span></div></div>'
         + '<p class="wintro">Highlight one box in each row. ' + (A.overall || '') + '</p>'
         + rubricTableHTML(false)
-        + '<div class="wb" style="margin-top:1rem"><div class="wlab">Overall grade</div><div class="wmcq inline">' + R.bands.map(function(b){ return '<span><span class="wbox" style="vertical-align:middle"></span> ' + esc(b) + '</span>'; }).join('') + '</div></div>'
+        + '<div class="wb" style="margin-top:1rem"><div class="wlab">Overall teacher judgement</div><div class="wmcq inline">' + R.bands.map(function(b){ return '<span><span class="wbox" style="vertical-align:middle"></span> ' + esc(b) + '</span>'; }).join('') + '</div></div>'
         + '<div class="wb"><div class="wlab">Handed in</div><div class="wmcq inline">' + (A.handIn || []).map(function(b){ return '<span><span class="wbox" style="vertical-align:middle"></span> ' + esc(b) + '</span>'; }).join('') + '</div></div>'
         + '<div class="wb"><div class="wlab">One thing done well</div><div class="wl"></div><div class="wl"></div></div>'
         + '<div class="wb"><div class="wlab">One next step</div><div class="wl"></div><div class="wl"></div></div>'
@@ -4058,7 +4061,8 @@ function renderAssessS(){
     var A = UNIT.assess || {}, R = A.rubric || { bands:[], rows:[] };
     var over = (A.overview || []).map(function(o){ return '<div><div class="s-label">' + esc(o.t) + '</div><div class="s-p">' + o.d + '</div></div>'; }).join('');
     var parts = (A.parts || []).map(function(p){ return '<tr><th class="whitespace-nowrap" style="text-align:left">' + esc(p.part) + '</th><td>' + esc(p.body) + '</td></tr>'; }).join('');
-    var rub = '<div class="overflow-x-auto"><table class="t-table s-table"><thead><tr><th>Criterion</th>' + R.bands.map(function(b){ return '<th>' + esc(b) + '</th>'; }).join('') + '</tr></thead><tbody>'
+    var bw = (82 / Math.max(1, R.bands.length)).toFixed(1);
+    var rub = '<div class="overflow-x-auto"><table class="t-table s-table" style="table-layout:fixed;min-width:760px"><thead><tr><th style="width:18%">Criterion</th>' + R.bands.map(function(b){ return '<th style="width:' + bw + '%"' + (b === 'Proficient' ? ' class="pd-prof"' : '') + '>' + esc(b) + '</th>'; }).join('') + '</tr></thead><tbody>'
         + R.rows.map(function(r){ return '<tr><th style="text-align:left">' + r.name + '</th>' + r.levels.map(function(x){ return '<td>' + x + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div>';
     var plist = (A.printList || []).map(function(x){
         var btn, name;
@@ -4074,7 +4078,9 @@ function renderAssessS(){
         + scard('<h2 class="s-h2">Before, during and after</h2><div class="grid md:grid-cols-3 gap-4">' + over + '</div>')
         + scard('<h2 class="s-h2">How the three lessons run</h2><div class="overflow-x-auto"><table class="t-table s-table"><tbody>' + parts + '</tbody></table></div>'
             + '<div class="s-buttons" style="margin-top:.8rem">' + (A.lessons || []).map(function(n){ return sbtn('switchLesson(' + n + ')', 'Lesson ' + n + ' →'); }).join('') + '</div>')
-        + scard('<h2 class="s-h2">Rubric</h2>' + rub + '<p class="s-small">' + esc(A.rubricNote || '') + ' ' + esc(A.overall || '') + '</p>')
+        + scard(descriptorGuideHTML())
+        + scard('<h2 class="s-h2">Marking rubric (five progress descriptors)</h2>' + rub + '<p class="s-small">' + esc(A.rubricNote || '') + ' ' + esc(A.overall || '') + '</p>'
+            + '<div class="s-buttons">' + sbtn('openMarkSheet()', '📝 Marking sheet') + sbtn('openClassRecord()', '📋 Class record') + (UNIT.gdocs && UNIT.gdocs.A1 ? '<a class="s-btn" style="text-decoration:none" target="_blank" rel="noopener" href="' + UNIT.gdocs.A1 + '">📄 Task sheet + rubric (Google Doc)</a>' : '') + (UNIT.gdocs && UNIT.gdocs.A2 ? '<a class="s-btn" style="text-decoration:none" target="_blank" rel="noopener" href="' + UNIT.gdocs.A2 + '">📄 Marking sheet (Google Doc)</a>' : '') + '</div>')
         + scard('<h2 class="s-h2">Everything to print</h2><div class="overflow-x-auto"><table class="t-table s-table"><thead><tr><th>What</th><th>Who</th><th>How many</th><th></th></tr></thead><tbody>' + plist + '</tbody></table></div>'
             + '<p class="s-small">Students hand in: ' + (A.handIn || []).map(esc).join(' · ') + '.</p>');
 }
@@ -4256,6 +4262,51 @@ function workbookHTML(){
     return out;
 }
 function openWorkbook(){ openPrintable(workbookHTML(), 'Student workbook (no device) — ' + SITE.unitBanner, siteFile('student-workbook')); }
+
+
+/* ---------- five progress descriptors ----------
+   The rubric, marking sheet, task sheet and Assessment tab all use the Ministry
+   of Education's five progress descriptors. Proficient is the expected standard. */
+function descriptorGuideHTML(){
+    var A = UNIT.assess || {}, D = A.descriptors || [];
+    return '<h2 class="s-h2">How to use the five progress descriptors</h2>'
+        + '<p class="s-p"><strong>Proficient</strong> is the expected standard for ' + esc(A.yearLevel || 'this year level') + ' — meeting expectations confidently and on their own. It is not a “pass”: it is where we want every student to be.</p>'
+        + '<div class="overflow-x-auto"><table class="t-table s-table"><thead><tr><th style="width:16%">Descriptor</th><th style="width:34%">What it means</th><th>What it looks like in this task</th></tr></thead><tbody>'
+        + D.map(function(d){ return '<tr' + (d.name === 'Proficient' ? ' class="pd-prof-row"' : '') + '><th style="text-align:left">' + esc(d.name) + '</th><td>' + esc(d.def) + '</td><td>' + esc(d.looks) + '</td></tr>'; }).join('')
+        + '</tbody></table></div>'
+        + '<div class="grid md:grid-cols-2 gap-4" style="margin-top:1rem">' + (A.timing || []).map(function(t){ return '<div><div class="s-label">' + esc(t[0]) + '</div><p class="s-p">' + esc(t[1]) + '</p></div>'; }).join('') + '</div>'
+        + '<p class="s-p"><strong>Judging:</strong> ' + esc(A.overall || '') + '</p>'
+        + '<p class="s-p"><strong>Reporting:</strong> ' + (A.reportNote || '') + '</p>'
+        + '<p class="s-small">The rubric wording is a draft for department moderation.</p>';
+}
+function rubricTableHTML(student){
+    var R = (UNIT.assess || {}).rubric; if (!R) return '';
+    var n = R.bands.length, bw = (82 / n).toFixed(1);
+    return '<table class="wtab wrub" style="table-layout:fixed;width:100%"><colgroup><col style="width:18%">' + R.bands.map(function(){ return '<col style="width:' + bw + '%">'; }).join('') + '</colgroup>'
+        + '<thead><tr><th>' + (student ? 'What we look for' : 'Criterion') + '</th>'
+        + R.bands.map(function(b){ return '<th' + (b === 'Proficient' ? ' style="background:#dbeafe"' : '') + '>' + esc(b) + (b === 'Proficient' ? '<br><span style="font-weight:normal;font-size:7pt">expected standard</span>' : '') + '</th>'; }).join('') + '</tr></thead><tbody>'
+        + R.rows.map(function(r){
+            return '<tr><th class="wrow" style="width:auto">' + r.name + '</th>' + r.levels.map(function(x, i){ return '<td class="wfill" style="font-size:8.2pt;vertical-align:top' + (R.bands[i] === 'Proficient' ? ';background:#f0f7ff' : '') + '">' + x + '</td>'; }).join('') + '</tr>';
+        }).join('') + '</tbody></table>';
+}
+function markSheetHTML(){
+    var A = UNIT.assess, R = A.rubric;
+    var pick = '<div style="font-family:Arial,Helvetica,sans-serif;font-size:8.4pt;line-height:1.9">' + R.bands.map(function(b){ return '<span style="white-space:nowrap;margin-right:6px"><span class="wbox" style="vertical-align:middle;width:9px;height:9px"></span> ' + esc(b) + '</span>'; }).join(' ') + '</div>';
+    var rows = R.rows.map(function(r){ return '<tr><th class="wrow" style="width:auto">' + r.name + '</th><td>' + pick + '</td><td style="height:22mm"></td></tr>'; }).join('')
+        + '<tr><th class="wrow" style="width:auto;background:#dbeafe">Overall teacher judgement</th><td style="background:#f0f7ff">' + pick + '</td><td style="height:22mm;background:#f0f7ff"></td></tr>';
+    return '<div class="wsheet"><div class="whead"><div class="wkicker">' + tagx('📝 Marking sheet — teacher copy', 'b91c1c') + esc(siteKicker() + ' · ' + SITE.unitBanner) + '</div>'
+        + '<h1>' + esc(A.title) + ' — marking sheet</h1>'
+        + '<div class="wname"><span>Student:</span><span class="wnl"></span><span>Format:</span><span class="wnl short"></span><span>Date:</span><span class="wnl short"></span></div></div>'
+        + '<div class="whint" style="border:1px solid #93c5fd;background:#eff6ff;padding:2mm 3mm;border-radius:2mm;margin-bottom:3mm"><strong>How to judge.</strong> Tick one progress descriptor for each criterion and note the evidence for your choice. Then make the <strong>overall teacher judgement</strong>: a best-fit, holistic call across the whole body of evidence — the planner, the final narrative or presentation, and class work. It is <strong>not an average</strong> of the rows. <strong>Proficient</strong> is the expected standard for ' + esc(A.yearLevel || '') + ': meeting expectations confidently and independently.</div>'
+        + '<table class="wtab ptab" style="table-layout:fixed;width:100%"><colgroup><col style="width:20%"><col style="width:34%"><col style="width:46%"></colgroup><thead><tr><th>Criterion</th><th>Progress descriptor</th><th>Evidence for this choice</th></tr></thead><tbody>' + rows + '</tbody></table>'
+        + '<div class="wb" style="margin-top:3mm"><div class="wlab">Why this descriptor (1–2 sentences)</div><div style="border:1px solid #888;height:18mm;border-radius:1mm"></div></div>'
+        + '<div class="wb"><div class="wlab">Next learning step (for the student and whānau)</div><div style="border:1px solid #888;height:18mm;border-radius:1mm"></div></div>'
+        + '<div class="wb"><div class="wlab">Handed in</div><div class="wmcq inline">' + (A.handIn || []).map(function(b){ return '<span><span class="wbox" style="vertical-align:middle"></span> ' + esc(b) + '</span>'; }).join('') + '</div></div>'
+        + '<div class="whint" style="margin-top:2mm"><strong>Timing.</strong> ' + (A.timing || []).map(function(t){ return '<strong>' + esc(t[0]) + ':</strong> ' + esc(t[1]); }).join(' ') + ' Reports need the descriptor, the narrative and the next step.</div>'
+        + '<div style="page-break-before:always"></div><div class="wlab" style="margin-top:2mm">The rubric (for reference)</div>' + rubricTableHTML(false)
+        + '<p class="whint" style="margin-top:2mm">Rubric wording is a draft for department moderation.</p>'
+        + '</div>';
+}
 
 </script>
 <!-- ===================== THE UNIT — everything below is content ===================== -->
@@ -4831,7 +4882,7 @@ var UNIT = {
    15
   ],
   "question": "How did the closing of the Silk Roads lead to the transatlantic slave trade?",
-  "brief": "<p>The unit plan’s summative (“Example Assessment — Teacher to refine/adapt”): students <strong>write or digitally present a historical narrative</strong> linking the closure of the Silk Roads to the rise of the transatlantic slave trade. It takes three lessons — <strong>plan, draft, publish</strong> — and is judged on <strong>accurate sequencing, use of evidence, and explaining different perspectives</strong>. The site adds a fourth row, <strong>communication</strong>, from the practice the plan names (communicate findings). Differentiation from the plan: a narrative template with sentence starters (the planner and the draft doc) and suggested source documents (the source pack).</p>",
+  "brief": "<p>The unit plan’s summative (“Example Assessment — Teacher to refine/adapt”): students <strong>write or digitally present a historical narrative</strong> linking the closure of the Silk Roads to the rise of the transatlantic slave trade. It takes three lessons — <strong>plan, draft, publish</strong> — and is judged on <strong>accurate sequencing, use of evidence, and explaining different perspectives</strong>, using the Ministry of Education’s <strong>five progress descriptors</strong> (Emerging, Developing, Consolidating, Proficient, Exceeding). The site adds a fourth row, <strong>communication</strong>, from the practice the plan names (communicate findings). Differentiation from the plan: a narrative template with sentence starters (the planner and the draft doc) and suggested source documents (the source pack).</p>",
   "overview": [
    {
     "t": "Before",
@@ -4843,7 +4894,7 @@ var UNIT = {
    },
    {
     "t": "After",
-    "d": "<p><strong>Summative:</strong> the historical narrative (Lessons 13–15), marked on sequencing, evidence, perspectives and communication.</p>"
+    "d": "<p><strong>Summative:</strong> the historical narrative (Lessons 13–15), judged against the five progress descriptors on sequencing, evidence, perspectives and communication, with an overall teacher judgement.</p>"
    }
   ],
   "parts": [
@@ -4861,53 +4912,102 @@ var UNIT = {
    },
    {
     "part": "Formats",
-    "body": "Written: 500–700 words. Digital: 8–10 slides, or a 3–4 minute recorded presentation with its script. Both are marked on the same rubric."
+    "body": "Written: 500–700 words. Digital: 8–10 slides, or a 3–4 minute recorded presentation with its script. Both are judged on the same rubric."
    }
   ],
-  "rubricNote": "The same rubric is on the task sheet, the draft doc and the final-check doc, so students see exactly what you mark against.",
-  "overall": "A sensible overall grade is the band where most of the highlighted boxes sit. A student who does not reach Achieved in a row gets a clear next step instead.",
+  "rubricNote": "The same rubric is on the task sheet, the draft doc and the final-check doc, so students see exactly what you judge against. The wording is a draft for department moderation.",
+  "overall": "Choose one descriptor for each criterion, then make an overall teacher judgement: a best-fit, holistic call across the whole body of evidence — the planner, the final narrative or presentation, and class work — not an average of the rows.",
   "handIn": [
    "Narrative or presentation",
    "Narrative planner",
    "Final check and reflection"
   ],
+  "yearLevel": "Year 7",
+  "descriptors": [
+   {
+    "name": "Emerging",
+    "def": "Needs significant support to meet year-level expectations.",
+    "looks": "Shows a small piece of the skill with a lot of help: names a few events, includes a fact, shares ideas in a sentence or a list."
+   },
+   {
+    "name": "Developing",
+    "def": "Making some progress; succeeds in familiar contexts with support.",
+    "looks": "Does part of the task with support (the planner, sentence starters, frames), often using one kind of evidence and the events studied in class."
+   },
+   {
+    "name": "Consolidating",
+    "def": "Meeting many expectations; growing independence, starting to transfer.",
+    "looks": "Does most of what Proficient describes, with some gaps or thin links; needs the scaffolds less and is starting to use the skills on new material."
+   },
+   {
+    "name": "Proficient",
+    "def": "Meeting year-level expectations confidently and independently.",
+    "looks": "Does everything the unit’s success criteria describe, on their own. This is the expected standard for Year 7 — not a “pass”."
+   },
+   {
+    "name": "Exceeding",
+    "def": "Beyond year-level expectations; connects, evaluates and extends ideas.",
+    "looks": "Does everything at Proficient and also evaluates, judges how reliable the sources are, and links the ideas to other times, places or the local area."
+   }
+  ],
+  "timing": [
+   [
+    "Mid-year",
+    "Consolidating, Proficient or Exceeding = on track."
+   ],
+   [
+    "End of year",
+    "Only Proficient or Exceeding = year-level expectations met."
+   ]
+  ],
+  "reportNote": "Every report comment needs three parts: the <strong>descriptor</strong>, a one- or two-sentence <strong>narrative</strong> saying why (with evidence), and a <strong>next learning step</strong> for the student and their whānau.",
   "rubric": {
    "bands": [
-    "Achieved",
-    "Merit",
-    "Excellence"
+    "Emerging",
+    "Developing",
+    "Consolidating",
+    "Proficient",
+    "Exceeding"
    ],
    "rows": [
     {
      "name": "Sequencing and causes",
      "levels": [
-      "Puts the main events in the right order, with some dates.",
-      "Puts all six steps in order with dates, and links most of them with a cause and a consequence.",
-      "Explains clearly how each step caused the next, so the whole chain from the Silk Roads to the slave trade makes sense."
+      "With significant support, can name some events from the unit and put two or three of them in order.",
+      "With support (the planner or sentence starters), can put some of the six steps in order and explain one or two causes from the events studied in class.",
+      "Can put most of the six steps in order with dates and link many of them with a cause and a consequence; some links are thin or missing. Needs the planner less and less.",
+      "Can independently tell the six steps from the Silk Roads to the transatlantic slave trade in order, with dates, and explain how each step caused the next (because… so… as a result…).",
+      "Can do all of Proficient, judge which causes mattered most and why, and connect the pattern of trade and contact to another time or place, such as the Pacific or Aotearoa."
      ]
     },
     {
      "name": "Use of evidence",
      "levels": [
-      "Uses at least one fact or source.",
-      "Uses evidence from several sources, and says which source.",
-      "Chooses strong evidence for each link, quotes or uses it accurately, and explains what it shows."
+      "With significant support, can include a fact or a quote from one source.",
+      "With support, can use evidence from one or two sources, often one kind (a fact or a quote), and say where it came from.",
+      "Can use evidence from several sources and name most of them; what the evidence shows is sometimes explained only briefly.",
+      "Can independently use evidence from the source pack in every paragraph, name the source, and explain what it shows.",
+      "Can do all of Proficient, choose the strongest evidence for each link, and judge how reliable or one-sided a source is (who made it, when and why)."
      ]
     },
     {
      "name": "Perspectives",
      "levels": [
-      "Says that a group other than the Europeans was affected.",
-      "Explains how two groups saw one event differently, and why (what they wanted or valued).",
-      "Explains several perspectives fairly, and how the same event was an opportunity for some and a conflict or challenge for others."
+      "With significant support, can name a group other than the Europeans who was part of these events.",
+      "With support, can describe how the events affected one group other than the Europeans.",
+      "Can explain how two groups saw an event differently; the reason (what each wanted or valued) is there but thin, or given for only one group.",
+      "Can independently explain how two groups saw the same event differently and why — what each wanted or valued, and whether it was an opportunity, a conflict or a challenge for them.",
+      "Can do all of Proficient, explain several perspectives fairly, notice whose voices are missing from the sources, and link these perspectives to how the events are remembered today, including in Aotearoa."
      ]
     },
     {
      "name": "Communication",
      "levels": [
-      "Can be followed: has a beginning and an end.",
-      "Clear structure (introduction, paragraphs, conclusion) and uses unit words correctly.",
-      "Clear, well-linked and engaging; unit words used precisely; the conclusion answers the question."
+      "With significant support, can share some ideas about the events in a sentence, a list or a labelled picture.",
+      "With support (the paragraph frames), can write or present a narrative with a beginning, middle and end, using some unit words.",
+      "Can write or present a narrative with a clear structure and many unit words used correctly; some paragraphs are not yet linked, or the conclusion only partly answers the question.",
+      "Can independently write or present a clear narrative with an introduction, linked paragraphs and a conclusion that answers the question, using unit words correctly (cultural contact, opportunity, conflict, challenge, colonisation).",
+      "Can do all of Proficient in a well-linked, engaging way for the audience, use unit words precisely, and finish with a reasoned judgement about how significant these changes were."
      ]
     }
    ]
@@ -4918,9 +5018,11 @@ var UNIT = {
    "L9 T-chart",
    "L12 game log",
    "Format",
-   "Narrative grade",
-   "Planner in",
-   "Reflection in"
+   "Sequencing",
+   "Evidence",
+   "Perspectives",
+   "Communication",
+   "Overall descriptor"
   ],
   "printList": [
    {
@@ -5301,8 +5403,12 @@ var UNIT = {
      "body": "<div class=\"wlab\">When</div><table class=\"wtab ptab\"><tbody><tr><th class=\"wrow\" style=\"width:22%\">Lesson 13 · Plan</th><td>Read the source pack. Fill in the narrative planner. Choose your format and start your introduction.</td></tr><tr><th class=\"wrow\">Lesson 14 · Draft</th><td>Draft your narrative or script, paragraph by paragraph.</td></tr><tr><th class=\"wrow\">Lesson 15 · Publish</th><td>Peer feedback, final edits, checklist and reflection. Hand in your narrative, your planner and your final-check doc.</td></tr></tbody></table>"
     },
     {
+     "t": "html",
+     "body": "<div class=\"wlab\">How it is judged</div><p class=\"wt\">Your narrative is judged using five progress descriptors: <strong>Emerging</strong>, <strong>Developing</strong>, <strong>Consolidating</strong>, <strong>Proficient</strong> and <strong>Exceeding</strong>. <strong>Proficient</strong> means you are meeting Year 7 expectations on your own, without help. Aim for Proficient or Exceeding: read the Proficient column first, then look at Exceeding to see how to go further. Your teacher looks at all your work — your planner, your final narrative and your class work — and makes one overall judgement.</p>"
+    },
+    {
      "t": "rubric",
-     "label": "How you are marked"
+     "label": "The rubric: what each step looks like"
     }
    ]
   },
@@ -6203,7 +6309,7 @@ var UNIT = {
    "p": "Communicate findings and conceptual knowledge by constructing a historical narrative of causes and consequences, using evidence from multiple sources.",
    "c": "Devices out. Students reread their planner and their introduction, and set a target: which paragraphs will be finished today?",
    "i": "Model a body paragraph with evidence and a perspective, using the paragraph frame in the Google Doc. Show how to link paragraphs (“This led to…”).",
-   "w": "Read a short example paragraph together and check it against the rubric: which band is it, and what would move it up?",
+   "w": "Read a short example paragraph together and check it against the rubric: which progress descriptor fits it best, and what would move it to the next one?",
    "y": "Students draft their narrative or presentation script in the Lesson 14 Google Doc, paragraph by paragraph, from their planner.",
    "r": "Students highlight one piece of evidence and one perspective sentence in their draft, and write one thing to fix in Lesson 15.",
    "res": "Book devices for the whole lesson. Students need their planner, task sheet and source pack from Lesson 13.",
@@ -7882,7 +7988,7 @@ var UNIT = {
     },
     {
      "t": "rubric",
-     "label": "How you are marked"
+     "label": "How it is judged: the five progress descriptors"
     }
    ]
   },
@@ -7955,7 +8061,7 @@ var UNIT = {
     },
     {
      "t": "rubric",
-     "label": "How you are marked"
+     "label": "How it is judged: the five progress descriptors"
     }
    ]
   }
@@ -10054,13 +10160,13 @@ var UNIT = {
     "k": "idea",
     "ph": "w",
     "kick": "Check it against the rubric",
-    "h": "Which band is this?",
+    "h": "Which progress descriptor fits this?",
     "body": [
      "“Spices were expensive. Then Constantinople fell in 1453. Then Portugal went to India by sea.”",
      "Events in order — but how are they linked? Where is the evidence?",
      "Make it stronger together: add “because”, a source, and a perspective."
     ],
-    "n": "Achieved for sequencing, not yet for causes or evidence. Improve it on the board together."
+    "n": "Developing for sequencing and causes: the events are in order, but not yet linked, and there is no evidence. Improve it on the board together until it reads like Proficient."
    },
    {
     "k": "sheet",
@@ -10190,7 +10296,7 @@ var UNIT = {
     "body": [
      "Read your partner’s narrative or watch their presentation.",
      "Two stars: two things from the checklist they do well.",
-     "A wish: one thing that would move it up a band.",
+     "A wish: one thing that would move it to the next progress descriptor.",
      "Write it in Q2 of their final-check doc."
     ],
     "n": "About 10 minutes. Model one good wish: specific, and linked to the rubric."
@@ -10540,8 +10646,10 @@ var UNIT = {
   "11": "https://docs.google.com/document/d/1jDcNmMWFC2gYdjXXkdWar7n8e2r2M9gqzU-sxOEWC0Y/edit",
   "12": "https://docs.google.com/document/d/1OMgr5-lFLhO1W9djpIQAfSpHKXzc5u_wlczNUd1M4Fg/edit",
   "13": "https://docs.google.com/document/d/1bdwP7bwl_XZokWQ_Fj6SlGcNs5aF-AlC8qL1SG2aNr0/edit",
-  "14": "https://docs.google.com/document/d/1o67RCKGRW-eV8ZwQhg1mu61FkW-PIGXy3jQiYywNrPA/edit",
-  "15": "https://docs.google.com/document/d/1xJ_AFWvGss366tLha72VqI2adZc2EfyNlymK6oIAcqk/edit"
+  "14": "https://docs.google.com/document/d/17s8im24Rw2311TrPwM9-_D7RpD0cpglB9SKaTU28aMs/edit",
+  "15": "https://docs.google.com/document/d/1qdgj90Lw_CrlLre1iO86dyJ4V4ACD4oxep_CtR9Jvmc/edit",
+  "A1": "https://docs.google.com/document/d/13WEtwclbRaGS8EthQq5j5k_GWKo2x8OFw-npM2g-gEE/edit",
+  "A2": "https://docs.google.com/document/d/17IkRAmj2wyn-pFKa_OCdqM1v9Kk-u38rLHOcB7dL-yE/edit"
  },
  "gslides": {
   "1": "https://docs.google.com/presentation/d/1whSvrREOvK0jPuRCBxTh7NvssBa0b-mXaC9gopa91gM/edit",
@@ -10557,8 +10665,8 @@ var UNIT = {
   "11": "https://docs.google.com/presentation/d/1FKuR21ix8xLtJ9HuHbI9MZ0ynDZvOI82bgv-gfy4_I4/edit",
   "12": "https://docs.google.com/presentation/d/18wTsu4xOZec6gpWlXHIr0QydXyo-bu64-hAGlbQFmCg/edit",
   "13": "https://docs.google.com/presentation/d/1Ze0I1HJhIIx94YgU9wF8ZZUCLB0TVvr49wpOEQBrEbM/edit",
-  "14": "https://docs.google.com/presentation/d/1GljXDGIMl2AH807KIjSrR4Z9Mv4gZkX14isa9alqtsU/edit",
-  "15": "https://docs.google.com/presentation/d/13eOwCxle4IsKmG3A3svVmr5xAuYYPUPGrjQyX34DwQo/edit"
+  "14": "https://docs.google.com/presentation/d/1D05DX5o4UkTM3b4tbvsrEB5kjCN9vhzsHTOyWjjGqNI/edit",
+  "15": "https://docs.google.com/presentation/d/1TkqLSc_WDHj0woON6JBU3CwqnNltGBHPHazlUSL0eTM/edit"
  },
  "gslidesFolder": "https://drive.google.com/drive/folders/1_kyxKMSD1rktEDn7O1urUekSWFsxiy8Y",
  "gdocsFolder": "https://drive.google.com/drive/folders/1MRjVeZ2v5sfxmbkhNnhrT_2sV_CxAKdM",
